@@ -164,6 +164,8 @@ class VNA:
         self.vna.write(':DISP:WIND1:TRAC3:Y:AUTO')
 
     def sweep(self, start, stop, num_points=10001, bw=10e3, only_z=False):
+        self.setup()
+
         self.vna.write(f':SENS1:FREQ:STAR {start}')
         self.vna.write(f':SENS1:FREQ:STOP {stop}')
         self.vna.write(f':SENS1:SWE:POIN {num_points}')

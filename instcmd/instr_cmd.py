@@ -1,4 +1,5 @@
 import inspect
+import time
 
 class DeviceCommandLine():
     devname = 'Nonce Device'
@@ -16,6 +17,8 @@ class DeviceCommandLine():
             n = n[5:]
             self.cmds[n] = f
 
+    def delay(self, t):
+        time.sleep(t)
 
     def find_command(self, cmd=None):
         results = []

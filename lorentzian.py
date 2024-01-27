@@ -96,14 +96,39 @@ def get_funcs(res):
     return FitFuncs(resonance, wind, unwind, baseline)
 
 
-def fit(f, z, *, smooth=20, deg=1, **guesses):
-    p = guess(f, z, smooth_len=smooth)
+def set_param_item(p, k, v):
+    try:
+        v = v[0]
+    except IndexError:
+        pass
 
-    f_oft = p['f_offset'].value
-    f_scale = p['f_scale'].value
+    match k:
+        case 'width':
+            p.add(k, v, min=0)
 
-    df = f - f_oft
-    dfu = df/f_scale
+        case 'phase':
+            p.add(k, v, min=v - 1, max=v + 1)
+
+        case 'f_scale' | 'f_offset':
+            p.add(k, v, vary=False)
+
+        case 'poly' | 'chi2':
+            return
+
+        case 'amplitude' | 'f0':
+            p.add(k, v, min=v/2, max=v*2)
+
+        case _:
+            raise KeyError(f'Invalid parameter field name {k}')
+
+def fit(f, z, *, smooth=20, deg=1, prev=None, **guesses):
+
+    if prev is None:
+        p = guess(f, z, smooth_len=smooth)
+    else:
+        p = lmfit.Parameters()
+        for k in prev._fields:
+            set_param_item(p, k, getattr(prev, k))
 
     for k, v in guesses.items():
         if k in p:
@@ -113,6 +138,12 @@ def fit(f, z, *, smooth=20, deg=1, **guesses):
                 p.add(k, v, vary=False)
             else:
                 p.add(k, v)
+
+    f_oft = p['f_offset'].value
+    f_scale = p['f_scale'].value
+
+    df = f - f_oft
+    dfu = df/f_scale
 
     def pre_fit(parm):
         phase = np.exp(1j*parm['phase'].value)

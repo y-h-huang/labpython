@@ -40,7 +40,7 @@ class HFModule:
         self.daq = daq
         self.mod = mod
         self.subs = []
-        self.set('device', daq.device_id)
+        #self.set('device', daq.device_id)
 
 
     @classmethod
@@ -71,15 +71,18 @@ class HFModule:
         return res
 
 
-    def read(self,  error_free=False):
+    def read(self,  error_free=False, prog_callback=False):
+        self.mod.execute()
 
         while True:
             if error_free:
                 self.daq.status = 0
                 s = 0
 
-            self.mod.execute()
             while (prog := float(self.mod.progress())) != 1:
+                if prog_callback:
+                    prog_callback(prog)
+
                 if error_free:
                     s |= self.daq.status
 

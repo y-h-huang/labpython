@@ -157,7 +157,7 @@ def get_funcs(r):
 
     return FitFuncs(resonance, wind, unwind, peaks, scaling)
 
-def fit(f, z, *, prev=None, rf_freq=None, deg=0, maxiter=1000, **guesses):
+def fit(f, z, *, prev=None, rf_freq=None, deg=0, maxiter=1000, weights=None, **guesses):
 
     if prev is not None:
         for k in res_keys[:8]:
@@ -187,7 +187,7 @@ def fit(f, z, *, prev=None, rf_freq=None, deg=0, maxiter=1000, **guesses):
     df = f - f0
     df_norm = df/fscale
 
-    weights = None
+    #weights = None
     if rf_freq is not None:
         weights = np.ones_like(f)
         weights[(f > rf_freq - 5.5e6) & (f < rf_freq + 5e5)] = 0

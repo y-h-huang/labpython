@@ -5,6 +5,27 @@ from collections import defaultdict, namedtuple
 dbm_to_mw = lambda x: 10**(x/10)
 mw_to_dbm = lambda x: np.log10(x)*10
 
+def ratio_to_db(r, mode='amplitude'):
+    if mode == 'amplitude':
+        prefactor = 20
+    elif mode == 'power':
+        prefactor = 10
+    else:
+        raise ValueError(f'Unknown mode \'{mode}\'; must be \'amplitude\' or \'power\'')
+
+    return prefactor*np.log10(r)
+
+def db_to_ratio(db, mode='amplitude'):
+    if mode == 'amplitude':
+        prefactor = 20
+    elif mode == 'power':
+        prefactor = 10
+    else:
+        raise ValueError(f'Unknown mode \'{mode}\'; must be \'amplitude\' or \'power\'')
+
+    return 10**(db/prefactor)
+
+
 def linpower(dbm1, dbm2, n, return_dbm=False):
     mws = np.linspace(dbm_to_mw(dbm1), dbm_to_mw(dbm2), n)
     return mw_to_dbm(mws) if return_dbm else mws
@@ -29,7 +50,6 @@ def funcfunc(x):
         func = lambda f: f.endswith(x)
     elif isinstance(x, re.Pattern):
         func = lambda f: re.search(x, f) is not None
-        print(func)
     elif callable(x):
         func = x
     else:
@@ -131,7 +151,7 @@ def random_element(seq):
 
     return result
 
-def hash_to_tuple(hash, name):
+def hash_to_tuple(hash, name='_'):
     return namedtuple(name, hash.keys())(*list(hash.values()))
 
 def load_data(filename, tuple_name=None):
@@ -192,6 +212,9 @@ def weighed_smooth(x, width, weights):
 
 class AvgStdAccumulator():
     def __init__(self):
+        self.clear()
+
+    def clear(self):
         self.set(0, 0, 0)
 
     def set(self, n, sum, sqsum):
@@ -209,6 +232,9 @@ class AvgStdAccumulator():
     def std(self):
         return (self.sqsum*self.n - self.sum**2)**.5/self.n
 
+    def meanstd(self):
+        return self.mean(), self.std()
+
     def serialize(self):
         return {'n': self.n, 'sum': self.sum, 'sqsum': self.sqsum}
 
@@ -218,6 +244,9 @@ class AvgStdAccumulator():
 
 class AvgStdAccumulatorC():
     def __init__(self):
+        self.clear()
+
+    def clear(self):
         self.set(0, 0, 0, 0, 0)
 
     def set(self, n, xsum, xsqsum, ysum, ysqsum):
@@ -244,6 +273,9 @@ class AvgStdAccumulatorC():
         y = (self.ysqsum*self.n - self.ysum**2)**.5/self.n
         return x + 1j*y
 
+    def meanstd(self):
+        return self.mean(), self.std()
+
     def serialize(self):
         return { 'n': self.n,
                  'xsum': self.xsum,
@@ -259,23 +291,35 @@ def timestamp(t=None):
     return time.strftime('%Y-%m-%d_%H%M%S')
 
 
-def fft(dt, z, with_f=True, with_fft=True):
-    ''' dt: time step; v: complex time domain signal '''
-    res = []
+### def fft(dt, z, with_f=True, with_fft=True):
+###     ''' dt: time step; v: complex time domain signal '''
+###     res = []
+### 
+###     if with_f:
+###         f_max = 0.5/dt
+###         n = len(z)//2
+###         res.append(np.arange(-n, n)*(f_max/n))
+###         if not with_fft:
+###             return res[0]
+### 
+###     if with_fft:
+###         res.append(np.fft.fftshift(np.fft.fft(z)))
+###         if not with_f:
+###             return res[0]
+### 
+###     return res
 
-    if with_f:
-        f_max = 0.5/dt
-        n = len(z)//2
-        res.append(np.arange(-n, n)*(f_max/n))
-        if not with_fft:
-            return res[0]
+class Attr(dict):
+    def __init__(self, **kwargs):
+        for k, v in kwargs.items():
+            self[k] = v
 
-    if with_fft:
-        res.append(np.fft.fftshift(np.fft.fft(z)))
-        if not with_f:
-            return res[0]
+    def __getattr__(self, k):
+        return self[k]
 
-    return res
+    def __setattr__(self, k, v):
+        self[k] = v
+
 
 if __name__ == '__main__':
     print(clustering(np.array([2, 1, 2, 4, 5, 6, 10, 11, 12]), 2))

@@ -21,6 +21,26 @@ class cmd_KEITHLEY(DeviceCommandLine):
         return self.device_command('current', *args)
  
 
+    def _cmd_sweep(self, *args):
+        args = [float(x) for x in args]
+
+        if len(args) == 2:
+            args.append(1)
+
+        if len(args) == 3:
+            args.append(0.1)
+
+        I0, I1, dI, dt = args
+        for I in np.linspace(I0, I1, int(abs((I1 - I0)/dI)) + 1):
+            print(I)
+            self.dev.current(I)
+
+            if dt > 0:
+                self.delay(dt)
+
+            self.inst_cmds.auto_exec()
+
+
     def _cmd_degauss(self, *args):
         if not args:
             I = self.dev.current()

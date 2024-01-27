@@ -54,11 +54,17 @@ class BNC845:
 
     def phase(self, phase=None):
         ''' phase in degrees '''
-        if phase is not None:
-            phase *= pi/180
-            self.dev.write(f':PHAS {phase}')
+        if phase is None:
+            return self.rad()/pi*180
 
-        return float(self.dev.query(':PHAS?'))*180/pi
+        self.rad(phase*pi/180)
+
+    def rad(self, phase=None):
+        ''' phase in degrees '''
+        if phase is None:
+            return float(self.dev.query(':PHAS?'))
+
+        self.dev.write(f':PHAS {phase}')
 
     def output(self, set_status=None):
         """Set or query the output status."""

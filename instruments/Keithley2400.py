@@ -36,8 +36,9 @@ class KEITHLEY:
         if I is None:
             return float(self.dev.query(':SOUR:CURR:LEV?'))*1000
 
-        if I > Imax:
-            I = Imax
+        Imax = abs(Imax)
+        I = min(I, Imax)
+        I = max(I, -Imax)
 
         self.dev.write(f':SOUR:CURR:LEV {I/1000:.6f}')
     

@@ -18,6 +18,8 @@ for addr, idn in device_ids():
         iset.add(name='vna', cls=VNA, addr=addr)
     elif idn.find('Berkeley Nucleonics') != -1:
         iset.add(name='rf', cls=BNC845, addr=addr)
+    elif idn.find('AnaPico') != -1:
+        iset.add(name='lo', cls=BNC845, addr=addr)
     elif idn.find('KEITHLEY') != -1 and idn.find('MODEL 2400') != -1:
         iset.add(name='psu', cls=KEITHLEY, addr=addr)
 

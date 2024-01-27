@@ -21,6 +21,28 @@ class InstrumentSet():
         self.shutdown_hooks.append(func)
         return self
 
+    @staticmethod
+    def run_with_idns(callback, **tags):
+        # tags is a name->(cls, *strings) dictionary
+
+        from instruments.devicelist import device_ids
+        iset = InstrumentSet()
+
+        for addr, idn in device_ids():
+            if idn is None:
+                continue
+
+            for k, v in tags.items():
+                vv = [v[1]] if isinstance(v[1], str) else v[1]
+
+                if all(idn.find(s) != -1 for s in vv):
+                    del tags[k] # remove from candidates
+                    iset.add(name=k, cls=v[0], addr=addr)
+                    break
+
+        with iset.run() as d:
+            callback(d)
+
     @contextmanager
     def run(self):
         devs = []

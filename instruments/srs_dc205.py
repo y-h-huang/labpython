@@ -4,7 +4,10 @@ class DC205:
     
     DEVICE_NAME = 'DC205'
 
-    def __init__(self, rm, address):
+    def __init__(self, rm=None, address='Invalid'):
+
+        if rm is None:
+            rm = pyvisa.ResourceManager()
 
         self.dev = rm.open_resource(address)
         self.dev.baud_rate = 115200
@@ -61,12 +64,12 @@ class DC205:
         if v is None:
             return float(self.query('VOLT?'))
 
-        self.write(f'VOLT {v}')
+        self.write(f'VOLT {v:.4f}')
         return self
 
 if __name__ == '__main__':
     rm = pyvisa.ResourceManager()
-    dc = DC205(rm, 'COM4')
+    dc = DC205(rm, 'COM15')
 
     import time
     import numpy as np
@@ -77,10 +80,11 @@ if __name__ == '__main__':
         dc.voltage(v)
         dc.floating(False)
         dc.output(True)
-        time.sleep(1)
+        time.sleep(.1)
         dc.floating(True)
         dc.output(False)
-        time.sleep(.5)
+        time.sleep(.05)
+        print(v)
 
     while True:
         cmd = input('> ')

@@ -80,11 +80,26 @@ class InstrumentCommands():
 
     def add(self, name, dev):
         self.devices[name] = self.load_command_interface(dev)
+        self.devices[name].inst_cmds = self
+
         return self
 
 
     def list_devices(self):
         return list(self.devices.keys())
+
+
+    def auto_exec(self):
+        prev_result = None
+
+        for dn, *args in self.auto_cmds:
+            args = [x if x != '#' else prev_result for x in args]
+
+            res = self.devices[dn].command(*args)
+            if res is not None:
+                prev_result = str(res)
+
+        return prev_result
 
 
     def run(self):
@@ -103,15 +118,11 @@ class InstrumentCommands():
 
                     cmd_res = self.run_single(devname, *args)
 
-                prev_result = cmd_res
-
                 if not text.endswith(';') and self.auto_cmd_active:
-                    for dn, *args in self.auto_cmds:
-                        args = [x if x != '#' else prev_result for x in args]
+                    prev_result = self.auto_exec()
+                else:
+                    prev_result = cmd_res
 
-                        res = self.devices[dn].command(*args)
-                        if res is not None:
-                            prev_result = str(res)
 
                 if cmd_res is not None:
                     yield cmd_res
@@ -123,13 +134,30 @@ class InstrumentCommands():
                 pass
 
 
+    def load_module(self, dev_name, mod_name):
+        import importlib
+        print(f'importing {mod_name} as {dev_name}')
+        mod = importlib.import_module(mod_name)
+        self.devices[dev_name] = mod.load(self, dev_name)
+
+
     def run_single(self, devname, *args):
         if not devname:
             return
 
-        if devname == 'auto':
-            self.do_auto_commands(*args)
-            return
+        match devname:
+            case 'auto':
+                self.do_auto_commands(*args)
+                return
+
+            case 'eval':
+                res = eval(' '.join(args))
+                self.result = str(res)
+                return res
+
+            case 'module':
+                self.load_module(*args)
+                return
 
         args = [x if x != '#' else self.result for x in args]
 

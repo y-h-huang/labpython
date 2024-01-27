@@ -2,6 +2,7 @@ import numpy as np
 from instcmd.instr_cmd import DeviceCommandLine
 from vnaplot import VNA_plot
 from collections import defaultdict
+from utils import extended_phase
 
 class cmd_VNA(DeviceCommandLine):
     devname = 'cmd_VNA'
@@ -34,12 +35,14 @@ class cmd_VNA(DeviceCommandLine):
         self.auto_center = None
         self.loss = None
         self.loss_correction = False
+        self.offset_marker = None
 
         self.delay = 0
         self.delay_offset = None
 
     def sweep(self):
         freq, z = self.dev.sweep_current_setting()
+
         if not self.delay:
             return freq, z
 
@@ -56,9 +59,15 @@ class cmd_VNA(DeviceCommandLine):
 
     def _cmd_delay(self, *args):
         if args:
-            delay, rel = self.parse_number(args[0])
-            if rel:
-                delay += self.delay
+            if args[0].lower() == 'auto':
+                self.delay = None
+                f, z = self.sweep()
+                ph = extended_phase(z)
+                delay = np.polyfit(f, ph, deg=1)[0]
+            else:
+                delay, rel = self.parse_number(args[0])
+                if rel:
+                    delay += self.delay
 
             self.delay = delay
         
@@ -70,8 +79,13 @@ class cmd_VNA(DeviceCommandLine):
 
         if 'phase'.startswith(cmd):
             self.vp.show_phase(not self.vp.phase_plot)
+
         elif 'origin'.startswith(cmd):
             self.vp.show_xy_origin(not self.vp.xy_origin)
+
+        elif 'xy'.startswith(cmd):
+            self.vp.show_xy_plot(not self.vp.show_xy)
+
         else:
             raise ValueError(f'Unknown toggle `{cmd}\'')
 
@@ -176,7 +190,13 @@ class cmd_VNA(DeviceCommandLine):
         if self.loss is not None and self.loss_correction:
             z = (z - self.loss[0])/self.loss[1]
 
-        self.vp.plot(freq, z, lw=self.linewidth)
+
+        if (m := self.offset_marker) is not None and m in self.markers:
+            offset = self.markers[m]
+        else:
+            offset = 0
+
+        self.vp.plot((freq - offset) if offset else freq, z, lw=self.linewidth)
 
         for ax in self.vp.x, self.vp.y, self.vp.p, self.vp.r:
             if ax:
@@ -184,7 +204,7 @@ class cmd_VNA(DeviceCommandLine):
                 for m, f in self.markers.items():
                     if freq[0] <= f <= freq[-1]:
                         ax.text(f, b, m)
-                        ax.axvline(f, linestyle='--', color='orange', lw=self.linewidth/2)
+                        ax.axvline(f - offset, linestyle='--', color='orange', lw=self.linewidth/2)
 
         if redraw:
             self.vp.draw()
@@ -246,7 +266,7 @@ class cmd_VNA(DeviceCommandLine):
             return self._cmd_span('center', str(self.markers[m]))
 
         elif 'pick'.startswith(c):
-            f = self.vp.fig.ginput(n=1)[0][0]
+            f = self.vp.fig.ginput(n=1)[0][0] + self.get_display_offset()
 
         elif 'lock'.startswith(c):
             slave = m
@@ -289,6 +309,21 @@ class cmd_VNA(DeviceCommandLine):
         return self.set_marker(m, f)
 
 
+    def _cmd_offset(self, *args):
+        if not args:
+            return self.offset_marker
+
+        if (m := args[0]) == 'off' or m == 'none':
+            self.offset_marker = None
+        else:
+            self.offset_marker = m
+
+    def get_display_offset(self):
+        m = self.offset_marker
+        if m is not None and m in self.markers:
+            return self.markers[m]
+        return 0
+
     def _cmd_autoscale(self):
         self.device_command('autoscale')
 
@@ -321,6 +356,12 @@ class cmd_VNA(DeviceCommandLine):
 
     def _cmd_power(self, *args):
         return self.device_command('power', *args)
+
+    def _cmd_on(self):
+        return self.dev.output(True)
+
+    def _cmd_off(self):
+        return self.dev.output(False)
 
     def _cmd_output(self, *args):
         return self.dev.output(*[self.parse_bool(x) for x in args])

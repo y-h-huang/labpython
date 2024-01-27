@@ -1,5 +1,7 @@
 from influxdb_client import InfluxDBClient, Point
 from influxdb_client.client.write_api import SYNCHRONOUS
+import time
+import numpy as np
 
 class InfluxDB_Logger:
     '''Helper class for reading from and writing to InfluxDB server'''
@@ -57,7 +59,7 @@ class InfluxDB_Logger:
 
         self._writer.write(bucket=bucket, record=[pt])
 
-    def build_query(self, bucket, name, fields, tags=None, start=86400, stop=0, last_only=True):
+    def build_query(self, bucket, name, fields, tags=None, start=86400, stop=0, last_only=True, convert_to_timestamp=True):
         '''
         Returns a function that can be called to read data from the InfluxDB server.
            bucket: name of the bucket
@@ -101,15 +103,22 @@ class InfluxDB_Logger:
                     if not f in output:
                         output[f] = {'time': [], 'value': []}
 
+                    if convert_to_timestamp:
+                        t = time.mktime(t.timetuple())
+
                     output[f]['time'].append(t)
                     output[f]['value'].append(v)
+
+            for f in output.keys():
+                for k in ['time', 'value']:
+                    output[f][k] = np.array(output[f][k])
 
             return output
 
         return query_func
 
 
-    def read(self, bucket, name, fields, tags=None, start=86400, stop=0, last_only=True):
+    def read(self, bucket, name, fields, tags=None, start=86400, stop=0, last_only=True, convert_to_timestamp=True):
         ''' Builds a query and read once; calling semantics same as in build_query()'''
         return self.build_query(bucket, name, fields, tags, start, stop, last_only)()
 

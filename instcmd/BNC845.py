@@ -13,13 +13,16 @@ class cmd_BNC(DeviceCommandLine):
     def _cmd_power(self, *args):
         return self.device_command('power', *args)
     
-    
+
     def _cmd_frequency(self, *args):
         return self.device_command('frequency', *args)
 
 
     def _cmd_phase(self, *args):
         return self.device_command('phase', *args)
+
+    def _cmd_rad(self, *args):
+        return self.device_command('rad', *args)
 
     def status(self):
         output = self._cmd_output()
@@ -41,6 +44,7 @@ class cmd_BNC(DeviceCommandLine):
         if freq is not None:
             freq = int(freq)
 
+        print(f'lock external={self.parse_bool(mode)} freq={freq}')
         return self.dev.lock(self.parse_bool(mode), freq=freq)
 
     def _cmd_refout(self, out=None):
